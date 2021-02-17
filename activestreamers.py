@@ -55,7 +55,7 @@ def get_streamer_id(discord_name):
     conn = psycopg2.connect(f"dbname={DBNAME} user={DBUSER} password={DBPASS}")
     cur = conn.cursor()
     logger.info(f"Translating {discord_name} to streamer_id")
-    sql = f"SELECT user_id from twitch_streamers where discord_user = '{discord_name}';"
+    sql = f"SELECT user_id from twitch_streamers where discord_user = %({discord_name});"
     cur.execute(sql)
     result = cur.fetchall()
     try:
@@ -357,14 +357,14 @@ class active_streamers(commands.Cog):
         logger.info(f"Got a request for twitch registration for {statement} by {str(ctx.author)}")
         conn = psycopg2.connect(f"dbname={DBNAME}s user={DBUSER} password={DBPASS}")
         cur = conn.cursor()
-        sql = f"SELECT * from twitch_streamers where login = '{statement}';"
+        sql = "SELECT * from twitch_streamers where login = %({statement})s;"
         cur.execute(sql)
         result = cur.fetchone()
         if result is not None:
             logger.info(f"Found login {statement} for {str(ctx.author)} as {result}")
             cur2 = conn.cursor()
             if result[4] is None:
-                sql2 = f"UPDATE twitch_streamers SET discord_user = '{str(ctx.author)}' where login = '{statement}';"
+                sql2 = f"UPDATE twitch_streamers SET discord_user = %({str(ctx.author)})s where login = %({statement})s;"
                 cur2.execute(sql2)
                 logger.info(f"{statement} for {str(ctx.author)} has been set")
                 await ctx.author.send(f"{statement} has been registered to you")
@@ -439,7 +439,7 @@ class active_streamers(commands.Cog):
             return
         conn = psycopg2.connect(f"dbname={DBNAME} user={DBUSER} password={DBPASS}")
         cur = conn.cursor()
-        sql = f"INSERT INTO subscriptions(cog, guild) VALUES ('{str(cog_name)}', {int(ctx.guild.id)}) ;"
+        sql = f"INSERT INTO subscriptions(cog, guild) VALUES (%({str(cog_name)})s, {int(ctx.guild.id)}) ;"
         logger.info(sql)
         cur.execute(sql)
         conn.commit()
@@ -454,7 +454,7 @@ class active_streamers(commands.Cog):
         so the SQL can be run to add guilds to active_streaming"""
         conn = psycopg2.connect(f"dbname={DBNAME} user={DBUSER} password={DBPASS}")
         cur = conn.cursor()
-        sql = f"SELECT cog FROM subscriptions where guild = { int(ctx.guild.id) };"
+        sql = f"SELECT cog FROM subscriptions WHERE guild = { int(ctx.guild.id) };"
         cur.execute(sql)
         results = [r[0] for r in cur.fetchall()]
         await ctx.channel.send(" ".join(results))
