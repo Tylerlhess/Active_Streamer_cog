@@ -14,6 +14,7 @@ logger.addHandler(handler)
 
 
 def is_admin(ctx):
+    "If you don't have an 'Admin' role you can change this to whatever your 'Game Operations Dictator' role is"
     logger.info(f'checking {ctx} for admin')
     return True if 'Admin' in [str(x) for x in ctx.message.author.roles] else False
 
@@ -35,7 +36,7 @@ def get_discord_name(streamer_id):
 
 def get_streamer_id(discord_name):
     """Helper function to translate discord user names to twitch streamer_id"""
-    conn = psycopg2.connect(f"dbname=eternaldecks user={DBUSER} password={DBPASS}")
+    conn = psycopg2.connect(f"dbname={DBNAME} user={DBUSER} password={DBPASS}")
     cur = conn.cursor()
     logger.info(f"Translating {discord_name} to streamer_id")
     sql = f"SELECT user_id from twitch_streamers where discord_user = '{discord_name}';"
@@ -322,11 +323,19 @@ class active_streamers(commands.Cog):
 
     @commands.command(pass_context = True)
     async def register(self, ctx):
+        """This is currently how users register to get the active streamer role."""
+        # TODO: Figure out and implement a way to regularly scan users for Twitch <-> Discord integration to link them
+        # TODO: Either track new users to the guild, allow spot checks on request by users, or run regular full guild scans
+        # TODO: As handles can change (thanks Nitro!) find out if the discord uuid is immutable and switch to that.
+        # Originally this was designed to allow for a many to one relation ship if a streamer had multiple accounts not sure how important that is.
+        # TODO: Fix the trusting community language.
         await ctx.channel.send(f"Please send !register_twitch <twitch_user_name> in a DM")
         await ctx.author.send(f"I am trusting the community here to only register their twitch accounts to their discord name. Abuses of this priviledge will be treated harshly. Please report abuses to the Eternal discord moderation team. This command will fail to run on any twitch streamer not in our database load up a stream to resolve this issue. Also spelling counts and twitch api goes off original account name so if you have changed it in the past use the original for this registration. Report any other issues to BadGuyTy")
 
     @commands.command(pass_context = True)
     async def register_twitch(self, ctx, *args):
+        """Actual registration command as provided by the bot."""
+        # TODO: Hopefully this becomes automated.
         statement = ' '.join(args)
         statement = statement.lower().strip()
         logger.info(f"Got a request for twitch registration for {statement} by {str(ctx.author)}")
@@ -354,11 +363,13 @@ class active_streamers(commands.Cog):
     @commands.command(pass_context = True)
     @commands.check(is_admin)
     async def track_game(self, ctx, *args):
+        """Add a game to the Current Discord guilds active streamers list."""
+        # TODO: Allow games to be discoverable by name or manually added to the database by an admin.
         game = str(*args)
-        games = { "eternal": 491403, "Pokemon_Sword_Shield": 497451, "ROOT": 507089}
+        games = {"Eternal": 491403, "Pokemon_Sword_Shield": 497451, "ROOT": 507089}
         logger.info(f'attempting to add {game}')
         if game not in games:
-            await ctx.send(f'{game} is not configured at this time please request it from BadGuyTy')
+            await ctx.send(f'{game} is not configured at this time please request it from Bot owner')
             return
         else:
             conn = psycopg2.connect(f"dbname={DBNAME}s user={DBUSER} password={DBPASS}")
@@ -376,12 +387,12 @@ class active_streamers(commands.Cog):
             conn.commit()
             conn.close()
         await ctx.channel.send(f'{game} seems to have added to you games please use !tracked_games to get you current list.')
-        await ctx.channel.send(f'Please support BotGuyTy\'s development and operation @ www.patreon.com/badguyty ')
 
 
     @commands.command(pass_context = True)
     @commands.check(is_admin)
     async def tracked_games(self, ctx):
+        # TODO: generate this list dynamically based off games in a games table
         games = {"eternal": 491403, "Pokemon_Sword_Shield": 497451, "ROOT": 507089}
         conn = psycopg2.connect(f"dbname={DBNAME}s user={DBUSER} password={DBPASS}")
         logger.info(f'attempting to get {ctx.guild.id} games')
@@ -391,17 +402,47 @@ class active_streamers(commands.Cog):
         cur.execute(sql)
         result = " ".join([key for key, value in games.items() if value in [r[0] for r in cur.fetchall()]])
         await ctx.channel.send(f'{result} ')
-        await ctx.channel.send(f'Please support BotGuyTy\'s development and operation @ www.patreon.com/badguyty ')
 
 
     @commands.command(pass_context = True)
     async def streams(self, ctx, *args):
         """While not perfect this has been the closest to getting the streamers names
         to show correct. Still has issues with spaces and will show the original
-        user name if the twitch user name was updated."""
-        escaped_back2 = "\\_"
+        twitch username if the twitch username was updated."""
         logger.info(f'''streams called from {int(ctx.guild.id)}''')
-        await ctx.channel.send(re.sub('_GETRID', escaped_back2, get_stream_list(get_gameids(ctx.guild.id))))
+        await ctx.channel.send(get_stream_list(get_gameids(ctx.guild.id)))
 
+    @commands.command(pass_context = True)
+    @commands.check(is_admin)
+    async def add_cog(ctx, *args):
+        """This is a boiler plate for adding different cogs I had it in my main bot.py file but have to include it here
+        so the SQL can be run to add guilds to active_streaming"""
+        cog_name = str(*args)
+        if cog_name not in ["active_streaming"]:
+            await ctx.channel.send(f'{cog_name} is not an available cog.')
+            return
+        conn = psycopg2.connect(f"dbname={DBNAME} user={DBUSER} password={DBPASS}")
+        cur = conn.cursor()
+        sql = f"INSERT INTO subscriptions(cog, guild) VALUES ('{str(cog_name)}', {int(ctx.guild.id)}) ;"
+        logger.info(sql)
+        cur.execute(sql)
+        conn.commit()
+        conn.close()
+        await ctx.channel.send(f'{cog_name} should be subscribed to.')
+
+
+    @commands.command(pass_context = True)
+    @commands.check(is_admin)
+    async def list_cogs(ctx, *args):
+        """This is a boiler plate for adding different cogs I had it in my main bot.py file but have to include it here
+        so the SQL can be run to add guilds to active_streaming"""
+        conn = psycopg2.connect(f"dbname={DBNAME} user={DBUSER} password={DBPASS}")
+        cur = conn.cursor()
+        sql = f"SELECT cog FROM subscriptions where guild = { int(ctx.guild.id) };"
+        cur.execute(sql)
+        results = [r[0] for r in cur.fetchall()]
+        await ctx.channel.send(" ".join(results))
+        conn.commit()
+        conn.close()
 
 
