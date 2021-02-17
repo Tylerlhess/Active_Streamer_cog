@@ -129,11 +129,6 @@ def get_stream_list(game_id=None):
     escaped_back_3 = "_"
     return '\r\n'.join([f"`{get_user(stream)}, is streaming for {stream['viewer_count']} ` <https://twitch.tv/{re.sub(' ', escaped_back_3, get_user(stream))}>" for stream in get_streams(game_id=game_id)])
 
-
-def get_stream_list_test2(game_id=None):
-    return [get_user(stream) for stream in get_streams(game_id=game_id)]
-
-
 def get_gameids(guild):
     logger.info(f"In get_gameids with {guild}")
     conn = psycopg2.connect(f"dbname={DBNAME} user={DBUSER} password={DBPASS}")
