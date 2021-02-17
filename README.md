@@ -1,6 +1,12 @@
 # Active_Streamer_cog
-This is a cog that can be used with the discord.py bot library. You add it like any other [cog](https://discordpy.readthedocs.io/en/latest/ext/commands/cogs.html)
+This cog can be used with the discord.py python bot library. You add it like any other [cog](https://discordpy.readthedocs.io/en/latest/ext/commands/cogs.html)
 
+This cog adds the ability to have streamers of a game tracked by the bot. If the streamers have registered with the bot it can add a role to the streamers in your discord that are streaming that game actively. This is meant to give exposure to smaller games that might not yet have a following outside there community that someone is actively streaming from their community. This was originally developed for Direwolf Digital's Eternal Card Game [Discord](https://discord.gg/eternal). It "should" have a working implementation currently. 
+
+It also offers a command to show all active streams of the game without the need for those streamers to be registered with the bot.
+
+While not currently implemented it can also add a general streamer role based on recent amount of time streamed because of the way that streams are recorded.
+  
 Requirements to run in it's current state.
 * Python3.6+ 
 * Credentials.py file with valid values [More on that here](# Credentials)
